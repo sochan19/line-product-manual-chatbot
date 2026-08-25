@@ -27,7 +27,10 @@ data "aws_iam_policy_document" "github_actions_trust" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:ref:refs/heads/main"]
+      # GitHubはリポジトリ名変更を追跡するため、組織名・リポジトリ名それぞれの後ろに
+      # 数値の内部ID(例: sochan19@51894375)を付与したsubクレームを発行する。
+      # そのためワイルドカードで数値ID部分を許容する。
+      values = ["repo:${split("/", var.github_repository)[0]}@*/${split("/", var.github_repository)[1]}@*:ref:refs/heads/main"]
     }
   }
 }
