@@ -1,0 +1,17 @@
+{
+  "name": "@line-manual-bot/worker-lambda",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@line-manual-bot/adapters": "workspace:*",
+    "@line-manual-bot/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.147",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
