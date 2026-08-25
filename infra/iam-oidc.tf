@@ -43,27 +43,47 @@ resource "aws_iam_role" "github_actions_deploy" {
 # terraform apply が必要とする範囲に絞ったデプロイ権限。
 # List/Describe系は読み取り専用のため広め、作成・変更・削除系はこのプロジェクトのリソースに絞る。
 data "aws_iam_policy_document" "github_actions_deploy" {
+  # Terraformのaws providerは、リソースの現在状態を読むために事前に列挙しきれない
+  # 数のDescribe/List/Get系APIを呼ぶ(例: dynamodb:DescribeContinuousBackups、
+  # lambda:ListVersionsByFunction、sqs:ListQueueTags等)。実行してみて初めて必要な
+  # アクションが判明することが多いため、読み取り専用アクションはサービス単位の
+  # ワイルドカードで許可する(値を変更するアクションではないため安全)。
   statement {
     sid    = "ReadOnlyDescribe"
     effect = "Allow"
     actions = [
-      "lambda:GetFunction*",
-      "lambda:ListFunctions",
-      "iam:GetRole",
-      "iam:GetRolePolicy",
-      "iam:ListRolePolicies",
-      "iam:ListAttachedRolePolicies",
-      "iam:ListInstanceProfilesForRole",
-      "sqs:GetQueueAttributes",
-      "sqs:GetQueueUrl",
-      "dynamodb:DescribeTable",
-      "ssm:GetParameter",
-      "ssm:GetParameters",
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:ListBucket",
+      "lambda:Get*",
+      "lambda:List*",
+      "iam:Get*",
+      "iam:List*",
+      "sqs:Get*",
+      "sqs:List*",
+      "dynamodb:Describe*",
+      "dynamodb:List*",
+      "logs:Describe*",
+      "logs:List*",
+      "logs:Get*",
+      "ssm:GetParameter*",
+      "ssm:DescribeParameters",
     ]
     resources = ["*"]
+  }
+
+  # Terraform state(S3バックエンド)の読み書きと、S3ネイティブロックの
+  # ロックファイル(.tflock)の削除に必要な権限。stateバケットのみに絞る。
+  statement {
+    sid    = "TerraformStateBackend"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:ListBucket",
+    ]
+    resources = [
+      "arn:aws:s3:::line-manual-bot-tfstate",
+      "arn:aws:s3:::line-manual-bot-tfstate/*",
+    ]
   }
 
   statement {
