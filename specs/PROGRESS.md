@@ -9,7 +9,7 @@
 |---|---|---|---|
 | 環境構築 | アカウント・鍵・SSM・Terraform state基盤(`docs/env-setup-record.md`) | 完了 | 2026-08-18 |
 | SDDコンテキスト整備 | CLAUDE.md・specs一式の作成 | 完了 | 2026-08-20 |
-| [P0 骨格](p0-echo-bot/spec.md) | Terraform bootstrap+LINEエコーボット | 進行中 | |
+| [P0 骨格](p0-echo-bot/spec.md) | Terraform bootstrap+LINEエコーボット | 完了 | 2026-08-25 |
 | [P1 RAG MVP](p1-rag-mvp/spec.md) | AI Search連携+Haiku生成+出典表示 | 未着手 | |
 | [P2 未回答判定+エスカレーション](p2-escalation/spec.md) | 二段判定・状態機械・SES・レート制限 | 未着手 | |
 | [P3 マルチターン](p3-multi-turn/spec.md) | 会話履歴+クエリ書き換え | 未着手 | |
@@ -28,7 +28,7 @@
 | Cloudflare R2バケットのimport | 完了 | `terraform plan -generate-config-out`で生成した設定をレビューし適用済み。AI Searchインスタンスはimport非対応と判明したため手動管理継続(env-setup-record §7-4) |
 | ローカルでterraform apply(OIDCロール作成が必須の前提) | 完了 | 1 imported, 15 added, 1 changed。その後IAM権限修正2件も適用済み |
 | CI(push毎にlint+test)/CD(mainへのpushでOIDC経由terraform apply) | 完了 | 両方ともGitHub Actions上でグリーン(run 32844206051・32844206157) |
-| LINE Webhook URL設定・疎通確認 | 未着手 | Function URL: `https://xhzexecebtitzwiaz5zisl3jim0bwosw.lambda-url.ap-northeast-1.on.aws/`。LINE Developersコンソールでの設定とLINEアプリからの実疎通確認が残っている |
+| LINE Webhook URL設定・疎通確認 | 完了 | Function URL: `https://xhzexecebtitzwiaz5zisl3jim0bwosw.lambda-url.ap-northeast-1.on.aws/`。実機でのエコー確認済み。途中、Function URLの公開許可に`lambda:InvokeFunction`権限が漏れており403 Forbiddenになる不具合があったため修正した(2025年10月以降のAWS仕様変更) |
 
 ## P1 RAG MVP
 
