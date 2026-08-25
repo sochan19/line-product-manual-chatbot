@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+apps/*/dist.zip
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfplan
+infra/generated.tf
+
+# misc
+*.log
+.DS_Store
+*:Zone.Identifier
