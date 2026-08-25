@@ -22,12 +22,13 @@
 | オープン判断の決定(Terraform import方針 / stateロック方式 / エコーの経路) | 完了 | import採用/S3ネイティブロック/SQS+worker骨格を最初から作成。詳細はp0-echo-bot/spec.md参照 |
 | モノレポ骨格(ポート&アダプタ、TypeScript基盤) | 完了 | pnpm workspaces / Vitest / Biome / dependency-cruiser。packages/domain・adapters、apps/webhook-lambda・worker-lambda |
 | テスト基盤+CI(テストランナー・lint・GitHub Actions自動実行) | 完了 | `pnpm lint`/`typecheck`/`depcheck`/`test`が全てグリーン。`.github/workflows/ci.yml`をpush/PR毎に実行 |
-| Terraform bootstrap(S3バックエンド+AWS/Cloudflareプロバイダ) | 完了 | `terraform init`/`validate`成功。AWS側`terraform plan`は15リソース追加でクリーン。CloudflareプロバイダはCLOUDFLARE_API_TOKEN未設定のためplan未実行 |
-| GitHub Actions OIDC連携(IAMをTerraform管理) | 完了(コード) | `infra/iam-oidc.tf`。適用は未実施(ローカルapplyが先に必要) |
-| webhook Lambda(署名検証+エコー応答)+ユニットテスト | 完了(コード) | `infra/lambda-webhook.tf`・`lambda-worker.tf`。ユニットテスト10件パス。実AWSへの適用は未実施 |
-| Cloudflare R2バケットのimport | ブロック中 | `CLOUDFLARE_API_TOKEN`をローカルで設定後、`terraform plan -generate-config-out`から実施が必要。AI Searchインスタンスはimport非対応と判明したため手動管理継続(env-setup-record §7-4) |
-| ローカルでterraform apply(OIDCロール作成が必須の前提) | 未着手 | CD(OIDC)より先にローカル実行が必要 |
-| LINE Webhook URL設定・疎通確認 | 未着手 | Function URL払い出し後に手動設定 |
+| Terraform bootstrap(S3バックエンド+AWS/Cloudflareプロバイダ) | 完了 | `terraform init`/`validate`成功。ローカルapply済み(1 imported, 15 added) |
+| GitHub Actions OIDC連携(IAMをTerraform管理) | 完了 | `infra/iam-oidc.tf`。subクレームのimmutable ID対応・読み取り権限不足を修正後、CDでのOIDC assume roleが成功することを確認済み |
+| webhook Lambda(署名検証+エコー応答)+ユニットテスト | 完了 | `infra/lambda-webhook.tf`・`lambda-worker.tf`。ユニットテスト10件パス。実AWSへのデプロイ済み(Function URL: 下記参照) |
+| Cloudflare R2バケットのimport | 完了 | `terraform plan -generate-config-out`で生成した設定をレビューし適用済み。AI Searchインスタンスはimport非対応と判明したため手動管理継続(env-setup-record §7-4) |
+| ローカルでterraform apply(OIDCロール作成が必須の前提) | 完了 | 1 imported, 15 added, 1 changed。その後IAM権限修正2件も適用済み |
+| CI(push毎にlint+test)/CD(mainへのpushでOIDC経由terraform apply) | 完了 | 両方ともGitHub Actions上でグリーン(run 32844206051・32844206157) |
+| LINE Webhook URL設定・疎通確認 | 未着手 | Function URL: `https://xhzexecebtitzwiaz5zisl3jim0bwosw.lambda-url.ap-northeast-1.on.aws/`。LINE Developersコンソールでの設定とLINEアプリからの実疎通確認が残っている |
 
 ## P1 RAG MVP
 
