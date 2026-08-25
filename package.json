@@ -1,0 +1,24 @@
+{
+  "name": "line-product-manual-chatbot",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "depcheck": "depcruise packages apps --config .dependency-cruiser.cjs",
+    "test": "vitest run",
+    "build": "node scripts/build-lambdas.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.10.0",
+    "dependency-cruiser": "^16.4.2",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
