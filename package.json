@@ -11,9 +11,11 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "depcheck": "depcruise packages apps --config .dependency-cruiser.cjs",
     "test": "vitest run",
-    "build": "node scripts/build-lambdas.mjs"
+    "build": "node scripts/build-lambdas.mjs",
+    "measure": "node scripts/measure-ai-search.mjs"
   },
   "devDependencies": {
+    "@aws-sdk/client-ssm": "^3.716.0",
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.10.0",
     "dependency-cruiser": "^16.4.2",
