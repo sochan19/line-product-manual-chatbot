@@ -10,7 +10,7 @@
 | 環境構築 | アカウント・鍵・SSM・Terraform state基盤(`docs/env-setup-record.md`) | 完了 | 2026-08-18 |
 | SDDコンテキスト整備 | CLAUDE.md・specs一式の作成 | 完了 | 2026-08-20 |
 | [P0 骨格](p0-echo-bot/spec.md) | Terraform bootstrap+LINEエコーボット | 完了 | 2026-08-25 |
-| [P1 RAG MVP](p1-rag-mvp/spec.md) | AI Search連携+Haiku生成+出典表示 | 未着手 | |
+| [P1 RAG MVP](p1-rag-mvp/spec.md) | AI Search連携+Haiku生成+出典表示 | 進行中 | |
 | [P2 未回答判定+エスカレーション](p2-escalation/spec.md) | 二段判定・状態機械・SES・レート制限 | 未着手 | |
 | [P3 マルチターン](p3-multi-turn/spec.md) | 会話履歴+クエリ書き換え | 未着手 | |
 | [P4 運用整備](p4-operations/spec.md) | 同期維持・キャリブレーション・ドキュメント | 未着手 | |
@@ -34,7 +34,8 @@
 
 | タスク | ステータス | メモ |
 |---|---|---|
-| SQS+DLQ+worker Lambda+冪等化 | 未着手 | |
+| P1の設計判断の確定(出典の生成主体・エラー時の挙動)とドキュメント反映 | 完了 | 出典はコード側で組み立て(設計書§3.4を修正)。検索・生成失敗時は定型返信してから例外を投げDLQへ |
+| SQS+DLQ+worker Lambda+冪等化 | 完了 | P0で前倒し実装済み(`infra/sqs.tf`・`lambda-worker.tf`、冪等化はwebhook側の`dynamoIdempotencyGuard`) |
 | AI Search `/search` 呼び出し(messages形式) | 未着手 | |
 | Haiku生成(チャンクのみ・ツールなし) | 未着手 | |
 | 出典表示フォールバック(F-02) | 未着手 | |
