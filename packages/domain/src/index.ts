@@ -15,4 +15,3 @@ export {
   noManualHitReplyText,
 } from './answer/assembleAnswerReply.js';
 export { buildAnswerPrompt } from './answer/buildAnswerPrompt.js';
-export { assembleEchoReply } from './echo/assembleEchoReply.js';
