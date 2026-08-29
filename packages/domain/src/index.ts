@@ -9,4 +9,10 @@ export type { ManualSearcher } from './ports/ManualSearcher.js';
 export type { OutboundQueue } from './ports/OutboundQueue.js';
 export type { ReplySender } from './ports/ReplySender.js';
 export type { SignatureVerifier } from './ports/SignatureVerifier.js';
+export {
+  answerUnavailableReplyText,
+  assembleAnswerReply,
+  noManualHitReplyText,
+} from './answer/assembleAnswerReply.js';
+export { buildAnswerPrompt } from './answer/buildAnswerPrompt.js';
 export { assembleEchoReply } from './echo/assembleEchoReply.js';
