@@ -29,6 +29,7 @@
 | ローカルでterraform apply(OIDCロール作成が必須の前提) | 完了 | 1 imported, 15 added, 1 changed。その後IAM権限修正2件も適用済み |
 | CI(push毎にlint+test)/CD(mainへのpushでOIDC経由terraform apply) | 完了 | 両方ともGitHub Actions上でグリーン(run 32844206051・32844206157) |
 | LINE Webhook URL設定・疎通確認 | 完了 | Function URL: `https://xhzexecebtitzwiaz5zisl3jim0bwosw.lambda-url.ap-northeast-1.on.aws/`。実機でのエコー確認済み。途中、Function URLの公開許可に`lambda:InvokeFunction`権限が漏れており403 Forbiddenになる不具合があったため修正した(2025年10月以降のAWS仕様変更) |
+| コードレビューで見つかった2件のバグ修正 | 完了 | ①SSM取得失敗時にウォームスタートしたLambdaが以後同じエラーを返し続けるキャッシュのバグ(`handler.ts`)、②webhookループで1件のイベント処理失敗が他のイベントを巻き込んで止まる問題(`webhookHandler.ts`。1件失敗時は500系を返すよう変更)。冪等性claim済みレコードの明示的な取り消しは行わずTTL任せとした(YAGNI) |
 
 ## P1 RAG MVP
 
