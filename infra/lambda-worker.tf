@@ -1,3 +1,16 @@
+locals {
+  # worker Lambdaがコールドスタート時に読む秘密情報(docs/env-setup-record.md §5)
+  workerSsmParameterNames = {
+    lineChannelAccessToken = "/line-manual-bot/line/channel-access-token"
+    anthropicApiKey        = "/line-manual-bot/anthropic/api-key"
+    aiSearchToken          = "/line-manual-bot/cloudflare/ai-search-token"
+    cloudflareAccountId    = "/line-manual-bot/cloudflare/account-id"
+  }
+
+  # Cloudflareダッシュボードで手動作成したAI Searchインスタンス名(Terraform管理外。§2.2)
+  aiSearchInstanceName = "line-manual-bot"
+}
+
 data "archive_file" "worker" {
   type        = "zip"
   source_dir  = "${path.module}/../apps/worker-lambda/dist"
@@ -41,10 +54,13 @@ data "aws_iam_policy_document" "worker_lambda_permissions" {
   }
 
   statement {
-    sid       = "ReadChannelAccessToken"
-    effect    = "Allow"
-    actions   = ["ssm:GetParameter"]
-    resources = ["arn:aws:ssm:${var.aws_region}:*:parameter/line-manual-bot/line/channel-access-token"]
+    sid     = "ReadSecrets"
+    effect  = "Allow"
+    actions = ["ssm:GetParameter"]
+    resources = [
+      for parameterName in values(local.workerSsmParameterNames) :
+      "arn:aws:ssm:${var.aws_region}:*:parameter${parameterName}"
+    ]
   }
 
   statement {
@@ -77,7 +93,11 @@ resource "aws_lambda_function" "worker" {
 
   environment {
     variables = {
-      LINE_CHANNEL_ACCESS_TOKEN_PARAMETER_NAME = "/line-manual-bot/line/channel-access-token"
+      LINE_CHANNEL_ACCESS_TOKEN_PARAMETER_NAME  = local.workerSsmParameterNames.lineChannelAccessToken
+      ANTHROPIC_API_KEY_PARAMETER_NAME          = local.workerSsmParameterNames.anthropicApiKey
+      CLOUDFLARE_AI_SEARCH_TOKEN_PARAMETER_NAME = local.workerSsmParameterNames.aiSearchToken
+      CLOUDFLARE_ACCOUNT_ID_PARAMETER_NAME      = local.workerSsmParameterNames.cloudflareAccountId
+      AI_SEARCH_INSTANCE_NAME                   = local.aiSearchInstanceName
     }
   }
 }
