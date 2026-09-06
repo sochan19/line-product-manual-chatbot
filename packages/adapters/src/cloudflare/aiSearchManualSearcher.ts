@@ -1,8 +1,11 @@
 import type { ManualChunk, ManualSearcher } from '@line-manual-bot/domain';
 import { parseAiSearchResponse } from './parseAiSearchResponse.js';
 
-/** worker Lambdaのタイムアウト(30秒)の中で、生成にも時間を残せる長さ */
-const searchTimeoutMs = 10_000;
+/**
+ * worker Lambdaのタイムアウト(60秒)の中で、生成にも時間を残せる長さ。
+ * P1の実測ではレイテンシは中央4.7秒・最大8.7秒だった(specs/p1-rag-mvp/spec.md)
+ */
+const searchTimeoutMs = 15_000;
 
 export type AiSearchConfig = {
   accountId: string;
@@ -28,22 +31,22 @@ function logSearchResult(latencyMs: number, chunks: ManualChunk[]): void {
 export function createAiSearchManualSearcher(
   config: AiSearchConfig,
 ): ManualSearcher {
-  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai-search/instances/${config.instanceName}/search`;
+  // 製品名は「AI Search」だが、検索系APIのパスは旧名の autorag/rags のまま。
+  // ai-search/instances/{名前}/search は存在せず401(ルート不在)になる(docs/env-setup-record.md §7-1)
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${config.accountId}/autorag/rags/${config.instanceName}/search`;
 
   return {
     async search(question) {
       const startedAt = Date.now();
 
-      // リクエストはOpenAI互換のmessages形式。単純なqueryではない(docs/env-setup-record.md §7-1)
+      // ボディは {"query": "質問文"}。messages配列を送ると400になる(同§7-1)
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${config.apiToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: question }],
-        }),
+        body: JSON.stringify({ query: question }),
         signal: AbortSignal.timeout(searchTimeoutMs),
       });
 

@@ -66,7 +66,8 @@ async function search(endpoint, apiToken, question) {
       Authorization: `Bearer ${apiToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ messages: [{ role: 'user', content: question }] }),
+    // アダプタと同じ形。ボディは {"query": ...}(docs/env-setup-record.md §7-1)
+    body: JSON.stringify({ query: question }),
   });
   const latencyMs = Date.now() - startedAt;
   const payload = await response.json();
@@ -96,7 +97,8 @@ async function main() {
     getSsmParameter(accountIdParameterName),
     getSsmParameter(aiSearchTokenParameterName),
   ]);
-  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai-search/instances/${aiSearchInstanceName}/search`;
+  // 検索系APIのパスは旧名の autorag/rags のまま(docs/env-setup-record.md §7-1)
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/autorag/rags/${aiSearchInstanceName}/search`;
 
   const latencies = [];
 
