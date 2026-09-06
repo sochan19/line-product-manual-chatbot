@@ -39,6 +39,19 @@ async function buildWebhookHandler() {
   });
 }
 
+async function getHandleWebhook() {
+  if (handleWebhookPromise === undefined) {
+    handleWebhookPromise = buildWebhookHandler();
+  }
+
+  try {
+    return await handleWebhookPromise;
+  } catch (error) {
+    handleWebhookPromise = undefined; // 次回の呼び出しで再試行できるようにする
+    throw error;
+  }
+}
+
 function getRawBody(event: APIGatewayProxyEventV2): string {
   if (!event.body) {
     return '';
@@ -63,8 +76,7 @@ function getSignatureHeader(
 export async function handler(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> {
-  handleWebhookPromise ??= buildWebhookHandler();
-  const handleWebhook = await handleWebhookPromise;
+  const handleWebhook = await getHandleWebhook();
 
   const result = await handleWebhook({
     rawBody: getRawBody(event),

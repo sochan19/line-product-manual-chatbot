@@ -29,16 +29,27 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {
     }
 
     const messages = parseWebhookRequestBody(input.rawBody);
+    let hasProcessingFailure = false;
 
     for (const message of messages) {
-      const isNewEvent = await deps.idempotencyGuard.claimEvent(
-        message.webhookEventId,
-      );
-      if (isNewEvent) {
-        await deps.outboundQueue.enqueue(message);
+      try {
+        const isNewEvent = await deps.idempotencyGuard.claimEvent(
+          message.webhookEventId,
+        );
+        if (isNewEvent) {
+          await deps.outboundQueue.enqueue(message);
+        }
+      } catch (error) {
+        // 1件の失敗で他のイベントの処理を止めない。冪等性テーブルのTTL(1時間)で
+        // 「claim済みだが未処理」の記録は自然に失効する
+        hasProcessingFailure = true;
+        console.error('Webhookイベントの処理に失敗しました', {
+          webhookEventId: message.webhookEventId,
+          error,
+        });
       }
     }
 
-    return { statusCode: 200 };
+    return { statusCode: hasProcessingFailure ? 500 : 200 };
   };
 }
