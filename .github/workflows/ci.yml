@@ -25,4 +25,6 @@ jobs:
 
       - run: pnpm depcheck
 
+      - run: pnpm docs:check
+
       - run: pnpm test

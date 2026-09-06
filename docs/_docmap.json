@@ -1,0 +1,120 @@
+{
+  "//": "ドキュメント契約(ドラフト)。各ドキュメントの役割・所有トピック(SSoT)・上限行数を1箇所で宣言し、scripts/check-docs.mjs と Skill doc-consistency-review の両方がこれを参照する。YAMLではなくJSONなのは、チェッカーを依存ライブラリなしで動かすため。maxLines を1行でも超えたらCIをNGにする(警告なしの二値)。上限を上げるときはコミットメッセージに理由を残す。",
+  "rules": {
+    "//": "機械チェックの共通設定。allow* は誤検知・意図的な例外を通すための明示的なエスケープハッチ。",
+    "headingLevelForDuplicateCheck": 3,
+    "minHeadingLengthForDuplicateCheck": 4,
+    "duplicateHeadingScope": [
+      "CLAUDE.md",
+      "docs/design-v5-hybrid.md",
+      "docs/env-setup-record.md",
+      "docs/glossary.md"
+    ],
+    "allowDuplicateHeadings": [],
+    "allowSsotCrossReferences": []
+  },
+  "docs": {
+    "CLAUDE.md": {
+      "purpose": "常駐コンテキスト。プロジェクト概要・アーキ要約・開発ルール・ドキュメントマップ。全セッションで自動ロードされるため最小限に保つ。",
+      "owns": ["開発ルール", "ドキュメントマップ"],
+      "notHere": [
+        "設計判断の根拠や比較検討(→docs/design-v5-hybrid.md)",
+        "環境構築の実測値・訂正事項(→docs/env-setup-record.md)",
+        "フェーズ別の実装詳細(→specs/*/spec.md)"
+      ],
+      "maxLines": 200
+    },
+    "docs/design-v5-hybrid.md": {
+      "purpose": "設計の正(Single Source of Truth)。要件・比較検討・採用アーキテクチャ・コスト試算・リスク。他文書を参照せず単独で読める形を保つ。",
+      "owns": [
+        "必須要件",
+        "検討した選択肢",
+        "採用アーキテクチャ",
+        "未回答判定ロジック",
+        "エスカレーションフロー",
+        "月額コスト試算",
+        "リスクと対策"
+      ],
+      "notHere": [
+        "作成済みリソースのID・トークンの置き場所(→docs/env-setup-record.md)",
+        "フェーズごとの作業手順やタスク分解(→specs/*/spec.md)",
+        "実装の進捗状況(→specs/PROGRESS.md)"
+      ],
+      "maxLines": 550,
+      "//sizeRationale": "単独で読めるレビュー用の統合設計書という別ジャンル。超えたら節を切り出す合図(現状433行)。"
+    },
+    "docs/env-setup-record.md": {
+      "purpose": "環境構築の完了記録。作成済みリソース・SSMパラメータ一覧・設計書からの訂正事項と実測マトリクス。",
+      "owns": [
+        "完了チェックリスト",
+        "SSM Parameter Store",
+        "設計書作成時点から判明した仕様変更"
+      ],
+      "notHere": [
+        "設計の意図や比較検討(→docs/design-v5-hybrid.md)",
+        "未着手フェーズの実装計画(→specs/*/spec.md)"
+      ],
+      "maxLines": 300
+    },
+    "docs/glossary.md": {
+      "purpose": "用語集。AWS/Terraform初心者向けに、ドキュメント内の専門用語を短く解説する。",
+      "owns": ["用語集"],
+      "notHere": ["設計判断そのもの", "手順や進捗"],
+      "maxLines": 200
+    },
+    "specs/PROGRESS.md": {
+      "purpose": "フェーズ/タスクごとの進捗管理表。着手・完了・ブロックの状態と一言メモのみ。",
+      "owns": ["進捗管理表", "全体サマリ"],
+      "notHere": [
+        "要件や設計判断の本文(→docs/design-v5-hybrid.md / specs/*/spec.md)",
+        "長い調査ログ(該当specの本文へ)"
+      ],
+      "maxLines": 300
+    },
+    "specs/p0-echo-bot/spec.md": {
+      "purpose": "P0(骨格)の実装スペック。要件の抜粋・スコープ・完了条件・このフェーズの設計判断。",
+      "owns": [],
+      "notHere": [
+        "設計全体の背景(→docs/design-v5-hybrid.md)",
+        "進捗ステータス(→specs/PROGRESS.md)"
+      ],
+      "maxLines": 250
+    },
+    "specs/p1-rag-mvp/spec.md": {
+      "purpose": "P1(RAG MVP)の実装スペック。要件の抜粋・スコープ・実測タスクと結果・完了条件。",
+      "owns": [],
+      "notHere": [
+        "設計全体の背景(→docs/design-v5-hybrid.md)",
+        "進捗ステータス(→specs/PROGRESS.md)"
+      ],
+      "maxLines": 250
+    },
+    "specs/p2-escalation/spec.md": {
+      "purpose": "P2(未回答判定+エスカレーション)の実装スペック。",
+      "owns": [],
+      "notHere": [
+        "設計全体の背景(→docs/design-v5-hybrid.md)",
+        "進捗ステータス(→specs/PROGRESS.md)"
+      ],
+      "maxLines": 250
+    },
+    "specs/p3-multi-turn/spec.md": {
+      "purpose": "P3(マルチターン)の実装スペック。",
+      "owns": [],
+      "notHere": [
+        "設計全体の背景(→docs/design-v5-hybrid.md)",
+        "進捗ステータス(→specs/PROGRESS.md)"
+      ],
+      "maxLines": 250
+    },
+    "specs/p4-operations/spec.md": {
+      "purpose": "P4(運用整備)の実装スペック。",
+      "owns": [],
+      "notHere": [
+        "設計全体の背景(→docs/design-v5-hybrid.md)",
+        "進捗ステータス(→specs/PROGRESS.md)"
+      ],
+      "maxLines": 220
+    }
+  }
+}
