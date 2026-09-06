@@ -10,6 +10,7 @@
     "format": "biome format --write .",
     "typecheck": "pnpm -r --if-present typecheck",
     "depcheck": "depcruise packages apps --config .dependency-cruiser.cjs",
+    "docs:check": "node scripts/check-docs.mjs",
     "test": "vitest run",
     "build": "node scripts/build-lambdas.mjs",
     "measure": "node scripts/measure-ai-search.mjs"
