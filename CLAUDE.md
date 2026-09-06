@@ -2,7 +2,7 @@
 
 ## プロジェクト概要
 
-Wordマニュアル(.docx)を**唯一の情報源**として、LINEで届いた質問に自動回答するQAボット。
+マニュアル(Markdown `.md`)を**唯一の情報源**として、LINEで届いた質問に自動回答するQAボット。
 マニュアルで答えられない質問は、ユーザーからメールアドレスを聞き取り、固定1名の担当者へSESでメール転送する(自動返信はしない)。
 
 - 利用規模: 月10ユーザー・月50質問程度。予算: **月額¥2,000以内**(試算は約¥50〜100)
@@ -22,8 +22,9 @@ LINEユーザー → LINE Platform
        4. Claude Haiku 4.5で生成+JSONで回答可能性を自己判定(第2段)
        5. LINE返信 / 未回答ならエスカレーション(SESで担当者へメール)
 
-[Cloudflare] R2バケット manuals/ に.docxを置くだけで、AI Searchが
-docx→Markdown変換・チャンク分割・埋め込み・索引化を全自動で実施(実装コードゼロ)
+[Cloudflare] R2バケット line-manual-bot-manuals の manuals/ に.mdを置くだけで、
+AI Searchがチャンク分割・埋め込み・索引化を全自動で実施(実装コードゼロ)
+※ フォルダ名は manuals/(複数形)。単数形だとAI Searchが1件も認識しない
 ```
 
 - **役割分担**: Cloudflare = マニュアルの索引化・検索のみ。AWS = それ以外すべて(Webhook・非同期処理・状態管理・メール)。Cloudflare Workers/Queuesは**使わない**(固定費回避が案F採用の核心)
@@ -33,7 +34,7 @@ docx→Markdown変換・チャンク分割・埋め込み・索引化を全自�
 
 ### 実装時の重要な注意点
 
-- AI Search `/search` はOpenAI互換の `{"messages": [{"role": "user", "content": "..."}]}` 形式(単純な`query`文字列ではない)。APIトークンは「AI Search: **編集**」権限が必要(`docs/env-setup-record.md` §7)
+- AI Searchの検索は `POST https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/**autorag/rags**/{NAME}/search`、ボディは `{"query": "質問文"}`。製品名は「AI Search」だが**検索系APIのパスは旧名の`autorag/rags`のまま**で、新しい`ai-search/instances`配下には存在せず401(ルート不在)になる。`messages`形式を送ると400。APIトークンは「AI Search: **編集**」権限が必要(実測の詳細は`docs/env-setup-record.md` §7)
 - F-01(マニュアルのみを根拠)はアーキテクチャで担保する: LLMにツールを与えず、プロンプトには検索ヒットチャンクのみを入れる
 - 迷ったら安全側 = **エスカレーションに倒す**(JSONパース失敗・タイムアウト・API障害はすべて未回答扱い)
 
