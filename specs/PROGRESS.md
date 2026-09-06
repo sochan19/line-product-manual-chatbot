@@ -10,7 +10,7 @@
 | 環境構築 | アカウント・鍵・SSM・Terraform state基盤(`docs/env-setup-record.md`) | 完了 | 2026-08-18 |
 | SDDコンテキスト整備 | CLAUDE.md・specs一式の作成 | 完了 | 2026-08-20 |
 | [P0 骨格](p0-echo-bot/spec.md) | Terraform bootstrap+LINEエコーボット | 完了 | 2026-08-25 |
-| [P1 RAG MVP](p1-rag-mvp/spec.md) | AI Search連携+Haiku生成+出典表示 | 未着手 | |
+| [P1 RAG MVP](p1-rag-mvp/spec.md) | AI Search連携+Haiku生成+出典表示 | 進行中 | |
 | [P2 未回答判定+エスカレーション](p2-escalation/spec.md) | 二段判定・状態機械・SES・レート制限 | 未着手 | |
 | [P3 マルチターン](p3-multi-turn/spec.md) | 会話履歴+クエリ書き換え | 未着手 | |
 | [P4 運用整備](p4-operations/spec.md) | 同期維持・キャリブレーション・ドキュメント | 未着手 | |
@@ -35,14 +35,19 @@
 
 | タスク | ステータス | メモ |
 |---|---|---|
-| SQS+DLQ+worker Lambda+冪等化 | 未着手 | |
-| AI Search `/search` 呼び出し(messages形式) | 未着手 | |
-| Haiku生成(チャンクのみ・ツールなし) | 未着手 | |
-| 出典表示フォールバック(F-02) | 未着手 | |
-| ユニットテスト(出典フォールバック・レスポンスパース・冪等化・プロンプト組み立て) | 未着手 | ポートをモック化して実施 |
-| マニュアルアップロード・索引化確認 | 未着手 | |
-| レイテンシ・日本語検索精度の実測 | 未着手 | 結果を記録し、必要なら逃げ道を検討 |
-| 見出しメタデータ取得可否の確認 | 未着手 | |
+| P1の設計判断の確定(出典の生成主体・エラー時の挙動)とドキュメント反映 | 完了 | 出典はコード側で組み立て(設計書§3.4を修正)。検索・生成失敗時は定型返信してから例外を投げDLQへ |
+| SQS+DLQ+worker Lambda+冪等化 | 完了 | P0で前倒し実装済み(`infra/sqs.tf`・`lambda-worker.tf`、冪等化はwebhook側の`dynamoIdempotencyGuard`) |
+| AI Search `/search` 呼び出し | 完了 | `packages/adapters/src/cloudflare/`。レスポンスのパースは純関数に切り出し、2系統の返却形に対応。**2026-09-06にエンドポイントとボディを訂正**: `ai-search/instances/{名前}/search` + `messages`形式は誤りで、正しくは `autorag/rags/{名前}/search` + `{"query": "..."}`。誤ったままでは本番の全質問が401になる状態だった(実測マトリクスはenv-setup-record §7-1) |
+| Haiku生成(チャンクのみ・ツールなし) | 完了 | `packages/adapters/src/anthropic/haikuAnswerGenerator.ts`。モデルID `claude-haiku-4-5`、ツール未指定をテストで固定 |
+| 出典表示フォールバック(F-02) | 完了 | `packages/domain/src/answer/formatSources.ts`。先頭3行以内の`#`〜`###`を見出しとして採用 |
+| ユニットテスト(出典フォールバック・レスポンスパース・冪等化・プロンプト組み立て) | 完了 | 全52件パス。worker全体の配線もモックで検証。追加分: SSMパラメータ4件の読み取り・生成の時間予算・検索のタイムアウト/非JSON応答・ヒット0件時の返信失敗 |
+| エラーハンドリングレビュー(Skill `phase-error-review`) | 完了 | 2026-09-06実施。①worker `handler.test.ts` が環境変数不足で失敗しCIが赤だったのを修正、②Anthropic SDKの既定リトライ(2回)によりLambdaの30秒タイムアウトを超え、catch節に入れずユーザーが無応答になる経路を `maxRetries: 0` で解消。握りつぶし・幻覚経路はなし。残課題2点(LINE返信にタイムアウトがない/設計判断3点)は下記とp2-escalation/spec.md §1-2へ。**その後の変更(エンドポイント訂正・チャンク展開・時間予算引き上げ)も同じ観点で再確認済み**: `content[]`から本文を1件も取り出せない場合は結合結果を空にせず例外にし、検索失敗・パース不能はすべて定型返信+DLQへ流れる(誤った回答の材料にしない) |
+| マニュアルアップロード・索引化確認 | 完了 | `manuals/hallman-at5-mizusumashi-series-manual.md`(17.3KB)を索引化し、検索でヒットすることを確認(2026-09-06)。途中、**パスが `manual/`(単数)で対象指定 `manuals/*` と一致せず、同期が正常終了しつつ `0 files seen`** という無警告の失敗を踏んだ(設計書§3.6・§6に追記)。形式は`.md`で確定。同期の手動起動は `POST /accounts/{acct}/ai-search/instances/{名前}/jobs` |
+| レイテンシ・日本語検索精度の実測 | 完了 | **レイテンシ: 630 / 4,253 / 4,679 / 5,778 / 8,708 ms(中央4,679・最大8,708)**。最大値が検索タイムアウト10秒に迫っていたため、**Lambda 30→60秒 / 検索 10→15秒 / 生成 15→20秒**に引き上げた。**精度: 関連質問4/4で正しいセクションが1位(スコア0.52〜0.62)、マニュアルに無い質問はヒット0件**。§4の逃げ道(ハイブリッド検索・埋め込みモデル差し替え)は不要と判断 |
+| 見出しメタデータ取得可否の確認 | 完了 | `attributes` に見出しは**含まれない**(`timestamp`/`folder`/空の`filename`/`file`のみ)。→ **本文から抽出するF-02フォールバックは必須**と確定。実測4件すべてで正しい見出しを抽出できている |
+| レスポンス構造の実測対応(チャンク展開) | 完了 | `data[]`が**ファイル単位**で`content[]`に複数チャンクが入ると判明。結合したままだとチャンクごとのスコアが失われP2の足切りができないため、`parseAiSearchResponse`で1チャンク=1`ManualChunk`に展開。実APIで検索→プロンプト組み立て→出典組み立てまで通しで確認済み |
+| 実機確認(LINEで出典付き回答が返る) | 未着手 | mainへのマージでCDがデプロイした後に実施。**`infra/sqs.tf`のタイムアウト変更があるため`terraform apply`が必要** |
+| LINE返信のタイムアウト未設定(P0からの持ち越し) | 未着手 | `lineReplySender.ts`。`@line/bot-sdk` 9.9.0の`MessagingApiClient`はtimeoutオプションを持たず内部fetchにも期限がない。LINE APIが無応答だとLambdaタイムアウトまで待ち、ユーザーが無応答になる。直すには独自fetchかラップが必要 |
 
 ## P2 未回答判定+エスカレーション
 

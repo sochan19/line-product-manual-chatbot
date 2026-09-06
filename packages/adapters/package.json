@@ -7,11 +7,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@line-manual-bot/domain": "workspace:*",
+    "@anthropic-ai/sdk": "^0.122.0",
     "@aws-sdk/client-dynamodb": "^3.716.0",
     "@aws-sdk/client-sqs": "^3.716.0",
     "@aws-sdk/client-ssm": "^3.716.0",
     "@aws-sdk/lib-dynamodb": "^3.716.0",
+    "@line-manual-bot/domain": "workspace:*",
     "@line/bot-sdk": "^9.7.1"
   },
   "devDependencies": {

@@ -1,7 +1,10 @@
-# P1で実測するまでの暫定値(specs/p0-echo-bot/spec.md参照)
+# P1の実測(2026-09-06)を反映した値
 locals {
-  workerLambdaTimeoutSeconds    = 30
-  queueVisibilityTimeoutSeconds = 180 # workerタイムアウトの約6倍(AWSの標準的な目安)
+  # 検索15秒 + 生成20秒 + LINE返信 の合計が収まる長さ。
+  # AI Searchのレイテンシを実測したところ中央4.7秒・最大8.7秒だったため、
+  # 検索10秒では余裕が1.3秒しかなかった(specs/p1-rag-mvp/spec.md 実測タスク)
+  workerLambdaTimeoutSeconds    = 60
+  queueVisibilityTimeoutSeconds = 180 # workerタイムアウトの3倍
   maxReceiveCountBeforeDlq      = 3
   dlqMessageRetentionSeconds    = 60 * 60 * 24 * 14 # 14日
 }

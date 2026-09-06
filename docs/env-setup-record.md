@@ -1,4 +1,4 @@
-# LINE Wordマニュアル参照QAボット 環境構築完了記録
+# LINE 社内マニュアル参照QAボット 環境構築完了記録
 
 **作成日**: 2026-08-18
 **対応する設計書**: `LINE-QAボット設計書_v5_ハイブリッド.md`(案F: AWS + Cloudflare ハイブリッド)
@@ -125,13 +125,41 @@ aws ssm get-parameters-by-path \
 
 Cloudflare公式ドキュメントを最新確認した結果、設計書(2026-08-17時点)から以下の点が更新されていることが判明した。
 
-1. **AI Search `/search` のリクエスト形式**: 単純な`query`文字列ではなく、OpenAI互換の`messages`配列形式が必要
-   ```json
-   {"messages": [{"role": "user", "content": "質問文"}]}
-   ```
-   エンドポイントURL自体(`https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai-search/instances/{NAME}/search`)は設計書の記載と一致することを確認済み。
+1. **AI Search の検索エンドポイントとリクエスト形式**
 
-2. **APIトークンの必要権限**: `/search`呼び出しには「AI Search: 編集」権限が必要(「読み取り」のみでは不十分)。
+   **再訂正(2026-09-06のP1レビューで実測)**: この項目には当初「エンドポイントは `.../ai-search/instances/{NAME}/search`、ボディはOpenAI互換の`messages`配列形式」と記載していたが、**どちらも誤りだった**。実APIで全パターンを叩いた結果は次のとおり。
+
+   | エンドポイント(`https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/` 以下) | ボディ | 結果 |
+   |---|---|---|
+   | `autorag/rags/{NAME}/search` | `{"query":"..."}` | **200 OK(これが正)** |
+   | `autorag/rags/{NAME}/search` | `{"messages":[...]}` | 400 `Invalid input: expected string, received undefined, path:["body","query"]` |
+   | `autorag/rags/{NAME}/ai-search` | `{"query":"..."}` | 200(Cloudflare側で回答文まで生成する。本設計では**使わない** — 回答生成はClaude Haiku側で行いF-01とP2のJSON自己判定を担保するため) |
+   | `ai-search/instances/{NAME}/search` | いずれも | 401 `{"code":10000,"message":"Authentication error"}` |
+   | `ai-search/instances/{NAME}/ai-search` | — | 404 `Route not found` |
+   | `GET ai-search/instances` / `.../jobs` / `GET autorag/rags` | — | 200(読み取り系はどちらの名前空間でも通る) |
+
+   つまりCloudflareは **AutoRAG → AI Search への改名が途中**で、**読み取り系は新名前空間に移行済みだが、検索系は旧`autorag/rags/`にしか存在しない**。存在しないルートに対して404ではなく**401が返る**ため、権限エラーだと誤診しやすい(実際にP1レビューで一度誤診した)。
+
+   ```json
+   POST .../accounts/{ACCOUNT_ID}/autorag/rags/line-manual-bot/search
+   {"query": "質問文"}
+   ```
+
+   将来Cloudflareが移行を完了すると`autorag/rags/`が廃止される可能性がある。`/search`が404や401を返し始めたら、まず`ai-search/instances/{NAME}/search`が有効になっていないかを確認する。
+
+2. **APIトークンの必要権限**: `/search`呼び出しには「AI Search: 編集」権限が必要(「読み取り」のみでは不十分)。SSMの `/line-manual-bot/cloudflare/ai-search-token`(トークンID `0040f0d2dc1bb201322a7da37316e749`、名前 `line-manual-bot-worker-search`)は**この編集権限を満たしていることを2026-09-06に確認済み**(アカウント / AI Search / 編集)。
+
+   参考(2026-09-06時点のインスタンス設定 — 検索精度が不足した場合の調整対象):
+
+   | 項目 | 現在値 |
+   |---|---|
+   | 埋め込みモデル | `@cf/qwen/qwen3-embedding-0.6b` |
+   | 索引方式 | ベクトルのみ(`keyword: false`、ハイブリッド検索オフ) |
+   | チャンクサイズ / オーバーラップ | 1024 / 10 |
+   | 最大ヒット件数 | 10 |
+   | クエリ書き換え / リランキング | どちらもオフ |
+   | データソース | R2バケット `line-manual-bot-manuals` の `manuals/*` |
+   | 同期ジョブ | 6時間ごとに自動実行され、直近も正常終了している |
 
 3. **データソース選択肢の追加**: ダッシュボードのインスタンス作成フローに「組み込みストレージ」(R2を介さずCloudflareが直接管理する専用ストレージ)という選択肢が新たに存在する。本プロジェクトでは設計書の運用フロー(運用者がR2にアップロード)を実現するため、引き続き**R2バケット**をデータソースとして選択している。
 
