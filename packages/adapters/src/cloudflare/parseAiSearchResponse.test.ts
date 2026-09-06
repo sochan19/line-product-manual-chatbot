@@ -28,18 +28,30 @@ describe('parseAiSearchResponse', () => {
     ]);
   });
 
-  it('parses the OpenAI-compatible shape with filename and a content array', () => {
+  // AI Searchの実レスポンスはファイル単位で、1ファイルに複数のヒットチャンクが入る。
+  // 結合するとチャンクごとのスコアが失われP2の足切りができないため、1件ずつに展開する
+  it('expands each content entry into its own chunk with its own score', () => {
     const payload = {
       success: true,
       result: {
         data: [
           {
             file_id: 'file-1',
-            filename: 'manuals/規程.docx',
-            score: 0.42,
+            filename: 'manuals/取扱説明書.md',
+            score: 0.596,
             content: [
-              { type: 'text', text: '前半の本文' },
-              { type: 'text', text: '後半の本文' },
+              {
+                id: 'c1',
+                type: 'text',
+                text: '### ろ過フィルター',
+                score: 0.596,
+              },
+              {
+                id: 'c2',
+                type: 'text',
+                text: '# 部品の交換頻度',
+                score: 0.474,
+              },
             ],
           },
         ],
@@ -48,10 +60,59 @@ describe('parseAiSearchResponse', () => {
 
     expect(parseAiSearchResponse(payload)).toEqual([
       {
-        fileName: 'manuals/規程.docx',
-        text: '前半の本文\n後半の本文',
-        score: 0.42,
+        fileName: 'manuals/取扱説明書.md',
+        text: '### ろ過フィルター',
+        score: 0.596,
       },
+      {
+        fileName: 'manuals/取扱説明書.md',
+        text: '# 部品の交換頻度',
+        score: 0.474,
+      },
+    ]);
+  });
+
+  it('falls back to the file score when a content entry has none', () => {
+    const payload = {
+      success: true,
+      result: {
+        data: [
+          {
+            filename: 'manuals/規程.md',
+            score: 0.42,
+            content: [{ type: 'text', text: '本文' }],
+          },
+        ],
+      },
+    };
+
+    expect(parseAiSearchResponse(payload)).toEqual([
+      { fileName: 'manuals/規程.md', text: '本文', score: 0.42 },
+    ]);
+  });
+
+  it('keeps the chunks of every hit file', () => {
+    const payload = {
+      success: true,
+      result: {
+        data: [
+          {
+            filename: 'manuals/a.md',
+            score: 0.6,
+            content: [{ type: 'text', text: 'Aの本文', score: 0.6 }],
+          },
+          {
+            filename: 'manuals/b.md',
+            score: 0.5,
+            content: [{ type: 'text', text: 'Bの本文', score: 0.5 }],
+          },
+        ],
+      },
+    };
+
+    expect(parseAiSearchResponse(payload)).toEqual([
+      { fileName: 'manuals/a.md', text: 'Aの本文', score: 0.6 },
+      { fileName: 'manuals/b.md', text: 'Bの本文', score: 0.5 },
     ]);
   });
 

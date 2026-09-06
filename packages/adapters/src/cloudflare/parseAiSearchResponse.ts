@@ -19,21 +19,29 @@ function readErrorMessages(payload: JsonObject): string {
 }
 
 /**
- * チャンク本文を取り出す。AI Searchは本文を `text` で返す形と、
- * OpenAI互換の `content` 配列で返す形の両方が確認されているため、どちらも受け付ける。
+ * `content` 配列の各要素を1チャンクとして取り出す。
+ * AI Searchのレスポンスは「ファイル単位」で、1ファイルの中に複数のヒットチャンクが
+ * `content: [{ text, score }, ...]` として入る(2026-09-06実測)。
+ * 結合して1件にまとめるとチャンクごとのスコアが失われ、P2のスコア足切りができなくなるため、
+ * ここで1チャンク=1件に展開する。scoreが無い要素はファイルレベルのscoreで補う。
  */
-function readChunkText(entry: JsonObject): string | undefined {
-  if (typeof entry.text === 'string') return entry.text;
+function readContentChunks(
+  entry: JsonObject,
+  fileName: string,
+  fileScore: number,
+): ManualChunk[] {
+  if (!Array.isArray(entry.content)) return [];
 
-  if (Array.isArray(entry.content)) {
-    const texts = entry.content
-      .filter(isJsonObject)
-      .map((part) => part.text)
-      .filter((text): text is string => typeof text === 'string');
-    if (texts.length > 0) return texts.join('\n');
-  }
-
-  return undefined;
+  return entry.content.filter(isJsonObject).flatMap((part) => {
+    if (typeof part.text !== 'string') return [];
+    return [
+      {
+        fileName,
+        text: part.text,
+        score: typeof part.score === 'number' ? part.score : fileScore,
+      },
+    ];
+  });
 }
 
 /** チャンクの由来ファイル名。`item.key` で返す形と `filename` で返す形の両方を受け付ける */
@@ -66,24 +74,30 @@ export function parseAiSearchResponse(payload: unknown): ManualChunk[] {
     throw new Error('AI Searchのレスポンスに result.data がありません');
   }
 
-  return result.data.map((entry) => {
+  return result.data.flatMap((entry) => {
     if (!isJsonObject(entry)) {
       throw new Error('AI Searchのチャンクがオブジェクトではありません');
     }
 
     const fileName = readFileName(entry);
-    const text = readChunkText(entry);
     const { score } = entry;
 
-    if (fileName === undefined || text === undefined) {
-      throw new Error(
-        'AI Searchのチャンクからファイル名または本文を取り出せません',
-      );
+    if (fileName === undefined) {
+      throw new Error('AI Searchのチャンクからファイル名を取り出せません');
     }
     if (typeof score !== 'number') {
       throw new Error('AI Searchのチャンクにスコアがありません');
     }
 
-    return { fileName, text, score };
+    // 本文を `text` で直接返す形と、`content` 配列で返す形の両方が確認されている
+    if (typeof entry.text === 'string') {
+      return [{ fileName, text: entry.text, score }];
+    }
+
+    const chunks = readContentChunks(entry, fileName, score);
+    if (chunks.length === 0) {
+      throw new Error('AI Searchのチャンクから本文を取り出せません');
+    }
+    return chunks;
   });
 }
