@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "biomejs.biome",
+    "ms-vscode-remote.remote-wsl",
+    "hashicorp.terraform",
+    "vitest.explorer"
+  ]
+}
