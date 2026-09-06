@@ -2,11 +2,17 @@ import type { AnswerPrompt } from '@line-manual-bot/domain';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHaikuAnswerGenerator } from './haikuAnswerGenerator.js';
 
-const { createMessage } = vi.hoisted(() => ({ createMessage: vi.fn() }));
+const { createMessage, constructClient } = vi.hoisted(() => ({
+  createMessage: vi.fn(),
+  constructClient: vi.fn(),
+}));
 
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class {
     messages = { create: createMessage };
+    constructor(options: unknown) {
+      constructClient(options);
+    }
   },
 }));
 
@@ -18,6 +24,7 @@ const prompt: AnswerPrompt = {
 
 beforeEach(() => {
   createMessage.mockReset();
+  constructClient.mockReset();
 });
 
 describe('createHaikuAnswerGenerator', () => {
@@ -51,6 +58,16 @@ describe('createHaikuAnswerGenerator', () => {
     await expect(
       createHaikuAnswerGenerator('test-key').generate(prompt),
     ).resolves.toBe('1文目\n2文目');
+  });
+
+  it('keeps the generation within the worker Lambda timeout budget', async () => {
+    createHaikuAnswerGenerator('test-key');
+
+    // SDK既定のリトライ(2回)が残っていると最悪60秒かかり、検索の15秒と合わせて
+    // Lambdaの60秒タイムアウトを超える。超えるとcatch節に入れずユーザーが無応答になる
+    expect(constructClient).toHaveBeenCalledWith(
+      expect.objectContaining({ timeout: 20_000, maxRetries: 0 }),
+    );
   });
 
   it('throws when the response carries no text block', async () => {

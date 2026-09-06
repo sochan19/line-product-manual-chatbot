@@ -77,6 +77,16 @@ describe('createWorkerHandler', () => {
     );
   });
 
+  it('rethrows when replying to a no-hit search fails, so SQS can retry', async () => {
+    const replyError = new Error('LINEの返信に失敗しました');
+    const deps = createDeps({ chunks: [] });
+    deps.replySender.reply = vi.fn().mockRejectedValue(replyError);
+
+    await expect(createWorkerHandler(deps)(message)).rejects.toThrow(
+      replyError,
+    );
+  });
+
   it('replies with the fixed error message and rethrows when the search fails', async () => {
     const searchError = new Error('AI Searchの呼び出しに失敗しました');
     const deps = createDeps({ searchError });
