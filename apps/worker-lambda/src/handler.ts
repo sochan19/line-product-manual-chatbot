@@ -30,9 +30,21 @@ async function buildWorkerHandler() {
   });
 }
 
+async function getHandleMessage() {
+  if (handleMessagePromise === undefined) {
+    handleMessagePromise = buildWorkerHandler();
+  }
+
+  try {
+    return await handleMessagePromise;
+  } catch (error) {
+    handleMessagePromise = undefined; // 次回の呼び出しで再試行できるようにする
+    throw error;
+  }
+}
+
 export const handler: SQSHandler = async (event: SQSEvent) => {
-  handleMessagePromise ??= buildWorkerHandler();
-  const handleMessage = await handleMessagePromise;
+  const handleMessage = await getHandleMessage();
 
   for (const record of event.Records) {
     const message = JSON.parse(record.body) as IncomingTextMessage;
