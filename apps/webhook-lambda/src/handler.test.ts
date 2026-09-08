@@ -9,6 +9,7 @@ vi.mock('@line-manual-bot/adapters', async (importOriginal) => {
   return { ...actual, getSsmParameter };
 });
 
+/** Function URLがLambdaに渡すイベントの最小形(署名ヘッダーは付けない) */
 function buildEvent(): APIGatewayProxyEventV2 {
   return {
     body: JSON.stringify({ events: [] }),
@@ -17,6 +18,7 @@ function buildEvent(): APIGatewayProxyEventV2 {
   } as APIGatewayProxyEventV2;
 }
 
+// 秘密情報はコールドスタート時に1度だけSSMから読み、以降の呼び出しで使い回す
 describe('webhook handler のコールドスタートキャッシュ', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -27,6 +29,7 @@ describe('webhook handler のコールドスタートキャッシュ', () => {
       '/line-manual-bot/line/channel-secret';
   });
 
+  // 失敗したPromiseをキャッシュしてしまうと、以降すべての呼び出しが同じエラーで死に続ける
   it('SSM取得が一時的に失敗しても、次回の呼び出しで再試行する', async () => {
     getSsmParameter.mockRejectedValueOnce(new Error('SSM一時エラー'));
     getSsmParameter.mockResolvedValueOnce('dummy-channel-secret');

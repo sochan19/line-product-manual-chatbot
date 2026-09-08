@@ -9,6 +9,7 @@ vi.mock('@line-manual-bot/adapters', async (importOriginal) => {
   return { ...actual, getSsmParameter };
 });
 
+/** SQSトリガーが渡すイベントの最小形(質問1件分) */
 function buildEvent(): SQSEvent {
   return {
     Records: [
@@ -34,6 +35,7 @@ const parameterNameByEnvVar = {
     '/line-manual-bot/cloudflare/account-id',
 };
 
+// 秘密情報はコールドスタート時に1度だけSSMから読み、以降の呼び出しで使い回す
 describe('worker handler のコールドスタートキャッシュ', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -46,6 +48,7 @@ describe('worker handler のコールドスタートキャッシュ', () => {
     process.env.AI_SEARCH_INSTANCE_NAME = 'line-manual-bot';
   });
 
+  // 環境変数で渡された4つのパラメータ名すべてがSSM取得の対象になっていること
   it('秘密情報をすべてSSMから読む', async () => {
     getSsmParameter.mockResolvedValue('dummy-value');
 
@@ -58,6 +61,7 @@ describe('worker handler のコールドスタートキャッシュ', () => {
     }
   });
 
+  // 失敗したPromiseをキャッシュしてしまうと、以降すべての呼び出しが同じエラーで死に続ける
   it('SSM取得が一時的に失敗しても、次回の呼び出しで再試行する', async () => {
     // 1回のコールドスタートで複数のパラメータをまとめて読むため、
     // 呼び出し回数から「何回目の組み立てか」を求めてエラー文言を変える

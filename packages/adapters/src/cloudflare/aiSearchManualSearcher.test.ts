@@ -24,7 +24,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// Cloudflare AI Search の /search をREST APIで直接呼び、マニュアルのチャンクを取得する
 describe('createAiSearchManualSearcher', () => {
+  // 呼び出し先URL・認証ヘッダー・ボディ・戻り値の変換までの基本形
   it('posts the question to the autorag search endpoint as a query', async () => {
     const fetchMock = vi
       .fn()
@@ -54,6 +56,7 @@ describe('createAiSearchManualSearcher', () => {
     ]);
   });
 
+  // ボディの形をチャット風のmessagesに戻していないことの回帰テスト
   it('does not send the OpenAI-compatible messages format', async () => {
     const fetchMock = vi
       .fn()
@@ -68,6 +71,19 @@ describe('createAiSearchManualSearcher', () => {
     expect(JSON.parse(init.body)).not.toHaveProperty('messages');
   });
 
+  // 15秒のタイムアウトで打ち切ったとき、握りつぶさず呼び出し元へ伝える
+  it('propagates a timeout so the worker can fall back to the fixed message', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new DOMException('timed out', 'TimeoutError')),
+    );
+
+    await expect(
+      createAiSearchManualSearcher(config).search('質問'),
+    ).rejects.toThrow('timed out');
+  });
+
+  // 4xx/5xxが返ったときは、ステータスが分かる文言で例外にする
   it('throws when the API responds with an HTTP error', async () => {
     vi.stubGlobal(
       'fetch',
@@ -79,6 +95,7 @@ describe('createAiSearchManualSearcher', () => {
     ).rejects.toThrow('HTTP 403');
   });
 
+  // HTTP 200でも本文がJSONでない(ゲートウェイのHTML等)場合は例外にする
   it('throws when the response body is not JSON', async () => {
     vi.stubGlobal(
       'fetch',
@@ -89,16 +106,5 @@ describe('createAiSearchManualSearcher', () => {
     await expect(
       createAiSearchManualSearcher(config).search('質問'),
     ).rejects.toThrow();
-  });
-
-  it('propagates a timeout so the worker can fall back to the fixed message', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockRejectedValue(new DOMException('timed out', 'TimeoutError')),
-    );
-
-    await expect(
-      createAiSearchManualSearcher(config).search('質問'),
-    ).rejects.toThrow('timed out');
   });
 });

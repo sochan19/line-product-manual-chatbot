@@ -1,7 +1,53 @@
 import { describe, expect, it } from 'vitest';
 import { parseAiSearchResponse } from './parseAiSearchResponse.js';
 
+// AI Searchの /search レスポンスを、ドメインのManualChunkの配列に変換する
 describe('parseAiSearchResponse', () => {
+  // JSONとして読めても文字列などオブジェクトでなければ、その時点で例外にする
+  it('throws when the payload is not an object', () => {
+    expect(() => parseAiSearchResponse('検索結果')).toThrow(
+      'オブジェクトではありません',
+    );
+  });
+
+  // Cloudflareがエラーを返したとき(認証エラーなど)は、原因が分かる文言で例外にする
+  it('throws with the error message of a failed response', () => {
+    const payload = {
+      success: false,
+      errors: [{ code: 10000, message: 'Authentication error' }],
+      result: null,
+    };
+
+    expect(() => parseAiSearchResponse(payload)).toThrow(
+      'Authentication error',
+    );
+  });
+
+  // 期待した形(result.data)が無いレスポンスは、0件と混同せず例外にする
+  it('throws when the payload has no result.data', () => {
+    expect(() => parseAiSearchResponse({ success: true })).toThrow(
+      'result.data',
+    );
+  });
+
+  // マニュアルに該当が無かったときは、例外ではなく空のヒットとして返す
+  it('returns an empty list when nothing hit', () => {
+    expect(
+      parseAiSearchResponse({ success: true, result: { data: [] } }),
+    ).toEqual([]);
+  });
+
+  // スコアが無いとP2のスコア足切りができないため、握りつぶさず例外にする
+  it('throws when a chunk has no score', () => {
+    const payload = {
+      success: true,
+      result: { data: [{ text: '本文', item: { key: 'manuals/a.docx' } }] },
+    };
+
+    expect(() => parseAiSearchResponse(payload)).toThrow('スコア');
+  });
+
+  // 本文を text、ファイル名を item.key で返す形のレスポンスを読める
   it('parses a response that carries the text and the file key on the chunk', () => {
     const payload = {
       success: true,
@@ -72,6 +118,7 @@ describe('parseAiSearchResponse', () => {
     ]);
   });
 
+  // チャンク側にスコアが無いときは、ファイル単位のスコアで補う
   it('falls back to the file score when a content entry has none', () => {
     const payload = {
       success: true,
@@ -91,6 +138,17 @@ describe('parseAiSearchResponse', () => {
     ]);
   });
 
+  // text も content も無いチャンクは本文が取れないので、空扱いにせず例外にする
+  it('throws when a chunk has neither text nor content', () => {
+    const payload = {
+      success: true,
+      result: { data: [{ score: 0.5, item: { key: 'manuals/a.docx' } }] },
+    };
+
+    expect(() => parseAiSearchResponse(payload)).toThrow('本文');
+  });
+
+  // 複数ファイルがヒットしたときは、どのファイルのチャンクも落とさず返す
   it('keeps the chunks of every hit file', () => {
     const payload = {
       success: true,
@@ -114,53 +172,5 @@ describe('parseAiSearchResponse', () => {
       { fileName: 'manuals/a.md', text: 'Aの本文', score: 0.6 },
       { fileName: 'manuals/b.md', text: 'Bの本文', score: 0.5 },
     ]);
-  });
-
-  it('returns an empty list when nothing hit', () => {
-    expect(
-      parseAiSearchResponse({ success: true, result: { data: [] } }),
-    ).toEqual([]);
-  });
-
-  it('throws with the error message of a failed response', () => {
-    const payload = {
-      success: false,
-      errors: [{ code: 10000, message: 'Authentication error' }],
-      result: null,
-    };
-
-    expect(() => parseAiSearchResponse(payload)).toThrow(
-      'Authentication error',
-    );
-  });
-
-  it('throws when the payload has no result.data', () => {
-    expect(() => parseAiSearchResponse({ success: true })).toThrow(
-      'result.data',
-    );
-  });
-
-  it('throws when a chunk has neither text nor content', () => {
-    const payload = {
-      success: true,
-      result: { data: [{ score: 0.5, item: { key: 'manuals/a.docx' } }] },
-    };
-
-    expect(() => parseAiSearchResponse(payload)).toThrow('本文');
-  });
-
-  it('throws when a chunk has no score', () => {
-    const payload = {
-      success: true,
-      result: { data: [{ text: '本文', item: { key: 'manuals/a.docx' } }] },
-    };
-
-    expect(() => parseAiSearchResponse(payload)).toThrow('スコア');
-  });
-
-  it('throws when the payload is not an object', () => {
-    expect(() => parseAiSearchResponse('検索結果')).toThrow(
-      'オブジェクトではありません',
-    );
   });
 });

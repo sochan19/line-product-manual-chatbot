@@ -28,6 +28,7 @@ function logSearchResult(latencyMs: number, chunks: ManualChunk[]): void {
   );
 }
 
+/** AI Searchの /search を呼ぶManualSearcher(検索ポートの実装)を作る */
 export function createAiSearchManualSearcher(
   config: AiSearchConfig,
 ): ManualSearcher {
