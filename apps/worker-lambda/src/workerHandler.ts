@@ -32,6 +32,10 @@ async function replyUnavailable(
   }
 }
 
+/**
+ * 質問1件を処理する本体を組み立てる。検索 → 生成 → LINE返信の順に進め、
+ * どこで失敗しても定型メッセージを返したうえで例外を投げ直す(安全側に倒す)。
+ */
 export function createWorkerHandler(deps: WorkerHandlerDeps) {
   return async function handleMessage(
     message: IncomingTextMessage,

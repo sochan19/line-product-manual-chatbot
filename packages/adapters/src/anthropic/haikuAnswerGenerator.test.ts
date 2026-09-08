@@ -27,7 +27,20 @@ beforeEach(() => {
   constructClient.mockReset();
 });
 
+// Claude Haiku 4.5 に問い合わせて、抜粋だけを根拠にした回答本文を受け取る
 describe('createHaikuAnswerGenerator', () => {
+  // クライアント生成時にタイムアウトとリトライ回数を固定する(最初に実行される処理)
+  it('keeps the generation within the worker Lambda timeout budget', async () => {
+    createHaikuAnswerGenerator('test-key');
+
+    // SDK既定のリトライ(2回)が残っていると最悪60秒かかり、検索の15秒と合わせて
+    // Lambdaの60秒タイムアウトを超える。超えるとcatch節に入れずユーザーが無応答になる
+    expect(constructClient).toHaveBeenCalledWith(
+      expect.objectContaining({ timeout: 20_000, maxRetries: 0 }),
+    );
+  });
+
+  // モデル・system・messagesの渡し方と、ツールを一切渡さないこと(F-01)
   it('sends the prompt to Claude Haiku 4.5 without any tool (F-01)', async () => {
     createMessage.mockResolvedValue({
       content: [{ type: 'text', text: '設定画面から変更できます。' }],
@@ -47,6 +60,7 @@ describe('createHaikuAnswerGenerator', () => {
     expect(request).not.toHaveProperty('tools');
   });
 
+  // 回答が複数のテキストブロックに分かれて返っても、1つの本文につなげる
   it('joins multiple text blocks into one answer', async () => {
     createMessage.mockResolvedValue({
       content: [
@@ -60,16 +74,7 @@ describe('createHaikuAnswerGenerator', () => {
     ).resolves.toBe('1文目\n2文目');
   });
 
-  it('keeps the generation within the worker Lambda timeout budget', async () => {
-    createHaikuAnswerGenerator('test-key');
-
-    // SDK既定のリトライ(2回)が残っていると最悪60秒かかり、検索の15秒と合わせて
-    // Lambdaの60秒タイムアウトを超える。超えるとcatch節に入れずユーザーが無応答になる
-    expect(constructClient).toHaveBeenCalledWith(
-      expect.objectContaining({ timeout: 20_000, maxRetries: 0 }),
-    );
-  });
-
+  // 本文が空のときは空文字を返さず例外にする(空の返信を送らないため)
   it('throws when the response carries no text block', async () => {
     createMessage.mockResolvedValue({ content: [] });
 

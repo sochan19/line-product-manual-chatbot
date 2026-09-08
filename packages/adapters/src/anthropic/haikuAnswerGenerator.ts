@@ -19,6 +19,7 @@ const generateTimeoutMs = 20_000;
  */
 const generateRetryCount = 0;
 
+/** Claude Haikuで回答本文を作るAnswerGenerator(生成ポートの実装)を作る */
 export function createHaikuAnswerGenerator(apiKey: string): AnswerGenerator {
   const client = new Anthropic({
     apiKey,

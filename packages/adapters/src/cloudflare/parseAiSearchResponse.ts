@@ -2,6 +2,7 @@ import type { ManualChunk } from '@line-manual-bot/domain';
 
 type JsonObject = Record<string, unknown>;
 
+/** 外部から来たJSONの値が、キーを引けるオブジェクトかどうかを判定する(配列とnullは除く) */
 function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

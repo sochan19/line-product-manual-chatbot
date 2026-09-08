@@ -20,6 +20,10 @@ export type WebhookHandlerResult = {
   statusCode: number;
 };
 
+/**
+ * Webhookの受け口を組み立てる。署名検証 → 冪等化 → SQSへ流す、までを担当し、
+ * 時間のかかる処理はworker Lambdaに任せてLINEへすぐ応答を返す。
+ */
 export function createWebhookHandler(deps: WebhookHandlerDeps) {
   return async function handleWebhook(
     input: WebhookHandlerInput,

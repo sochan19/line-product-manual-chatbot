@@ -15,7 +15,9 @@ const chunks: ManualChunk[] = [
   },
 ];
 
+// 検索でヒットしたチャンクと質問文だけから、Claudeへ渡すプロンプトを組み立てる
 describe('buildAnswerPrompt', () => {
+  // 回答の材料(抜粋の本文)と質問が、もれなくユーザープロンプトに入ること
   it('includes every chunk text and the question', () => {
     const { userPrompt } = buildAnswerPrompt('パスワードの変え方は?', chunks);
 
@@ -25,6 +27,7 @@ describe('buildAnswerPrompt', () => {
     expect(userPrompt).toContain('パスワードの変え方は?');
   });
 
+  // 抜粋と質問以外(ファイル名など)がLLMに渡らないこと。F-01をプロンプト側から担保する
   it('does not leak information other than the chunk texts and the question (F-01)', () => {
     const { userPrompt } = buildAnswerPrompt('パスワードの変え方は?', chunks);
 
@@ -43,6 +46,7 @@ describe('buildAnswerPrompt', () => {
     expect(promptLines).toEqual(chunkLines.filter((line) => line !== ''));
   });
 
+  // システムプロンプトに、抜粋だけを根拠にする指示と出典を書かせない指示が入っていること
   it('tells the model to answer only from the excerpts and to omit sources', () => {
     const { systemPrompt } = buildAnswerPrompt('質問', chunks);
 
@@ -50,6 +54,7 @@ describe('buildAnswerPrompt', () => {
     expect(systemPrompt).toContain('出典');
   });
 
+  // システムプロンプトは固定文。質問やチャンクによって指示が薄まらないことを固定する
   it('keeps the system prompt independent of the question and chunks', () => {
     const first = buildAnswerPrompt('質問A', chunks);
     const second = buildAnswerPrompt('質問B', []);
